@@ -16,7 +16,7 @@ local markers = {
   delimiter = "^=======$",
 }
 
-local has_all_markers = function()
+local missing_markers = function()
   for name, marker in pairs(markers) do
     if vim.fn.search(marker, "nw") == 0 then
       return name
@@ -25,41 +25,45 @@ local has_all_markers = function()
 end
 
 M.start = function()
-  local missing = has_all_markers()
+  local missing = missing_markers()
   if missing then
+    -- TODO: Not sure many people will make the connection from a missing marker (most
+    -- likely the "base" marker) to the need to adjust `merge.conflictstyle`. Might be
+    -- better to just say "make sure you are using the right merge.conflictstyle"
     vim.notify(string.format("Missing marker: %s", missing), "error")
   end
 
   local contents = M.get_contents(a.nvim_buf_get_lines(0, 0, -1, false))
+  local filename = vim.fn.bufname()
   local filetype = vim.bo.filetype
 
-  vim.cmd [[tabnew]]
+  vim.cmd [[tabnew git-therapy://ours]]
   local left = {
     win = a.nvim_get_current_win(),
     bufnr = a.nvim_get_current_buf(),
   }
-  vim.cmd [[set diff]]
+  vim.cmd [[diffthis]]
 
-  vim.cmd [[belowright vnew]]
+  vim.cmd("belowright vnew " .. filename)
   local middle = {
     win = a.nvim_get_current_win(),
     bufnr = a.nvim_get_current_buf(),
   }
-  vim.cmd [[set diff]]
+  vim.cmd [[diffthis]]
 
-  vim.cmd [[belowright vnew]]
+  vim.cmd [[belowright vnew git-therapy://theirs]]
   local right = {
     win = a.nvim_get_current_win(),
     bufnr = a.nvim_get_current_buf(),
   }
-  vim.cmd [[set diff]]
+  vim.cmd [[diffthis]]
 
   vim.cmd [[wincmd =]]
 
   a.nvim_buf_set_lines(left.bufnr, 0, -1, false, contents.ours.lines)
   a.nvim_buf_set_lines(right.bufnr, 0, -1, false, contents.theirs.lines)
 
-  local base_ns = a.nvim_create_namespace "neogit.base"
+  local base_ns = a.nvim_create_namespace "diff-therapy"
   for idx, hunk in ipairs(contents.base.hunks) do
     local start = -1
     if idx == 1 then
@@ -95,8 +99,17 @@ M.start = function()
     -- 'scrollopt'  includes "hor"
   end
 
+  for _, conf in ipairs { left, right } do
+    -- Make these "scratch buffers"
+    vim.bo[conf.bufnr].buftype = "nofile"
+    vim.bo[conf.bufnr].bufhidden = "hide"
+    vim.bo[conf.bufnr].swapfile = false
+  end
+
   -- Fix redraw bugs
   vim.cmd [[mode]]
+
+  a.nvim_set_current_win(middle.win)
 end
 
 local Contents = {}

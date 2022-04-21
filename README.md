@@ -20,7 +20,7 @@ to the buffer)
 
 ## Recommended settings
 
-Seems like default diff algo doesn't like this kind of merge, so maybe you need:
+Seems like default diff algo doesn't like this kind of merge ([z]diff3), so maybe you need:
 
 ```lua
 vim.opt.diffopt = { "internal", "filler", "closeoff", "hiddenoff", "algorithm:minimal" }
