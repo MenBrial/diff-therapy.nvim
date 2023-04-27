@@ -37,7 +37,7 @@ M.start = function()
   local filename = vim.fn.bufname()
   local filetype = vim.bo.filetype
 
-  vim.cmd('tabnew Ours – ' .. contents.ours_name)
+  vim.cmd('tabnew ours-' .. filename)
   local left = {
     win = a.nvim_get_current_win(),
     bufnr = a.nvim_get_current_buf(),
@@ -51,7 +51,7 @@ M.start = function()
   }
   vim.cmd [[diffthis]]
 
-  vim.cmd('belowright vnew Theirs – ' .. contents.theirs_name)
+  vim.cmd('belowright vnew theirs-' .. filename)
   local right = {
     win = a.nvim_get_current_win(),
     bufnr = a.nvim_get_current_buf(),
@@ -71,19 +71,34 @@ M.start = function()
     end
 
     if hunk.mode == modes.BASE then
-      for _, line in ipairs(hunk.lines) do
+      for i, line in ipairs(hunk.lines) do
         local buffer_line = a.nvim_buf_line_count(middle.bufnr) - 1
+        local s, e = string.find(line, '^%s*')
+        print(s, e)
+        local margin = string.sub(line, s, e)
+        print('q' .. margin .. 'q')
 
-        a.nvim_buf_set_extmark(middle.bufnr, base_ns, buffer_line, 0, {
-          virt_lines = { { { line, 'DiffText' } } },
-        })
-
-        a.nvim_buf_set_extmark(left.bufnr, base_ns, buffer_line, 0, {
-          virt_lines = { { { "" } } },
-        })
-        a.nvim_buf_set_extmark(right.bufnr, base_ns, buffer_line, 0, {
-          virt_lines = { { { "" } } },
-        })
+        if i == 1 then
+          a.nvim_buf_set_extmark(middle.bufnr, base_ns, buffer_line, 0, {
+            virt_lines = { { { line, 'DiffText' }, { ' |||| base − ' .. contents.base_name, 'Comment' }} },
+          })
+          a.nvim_buf_set_extmark(left.bufnr, base_ns, buffer_line, 0, {
+            virt_lines = { { { margin .. '<<<< ours − ' .. contents.ours_name, 'Comment' } } },
+          })
+          a.nvim_buf_set_extmark(right.bufnr, base_ns, buffer_line, 0, {
+            virt_lines = { { { margin .. '>>>> theirs − ' .. contents.theirs_name, 'Comment' } } },
+          })
+        else
+          a.nvim_buf_set_extmark(middle.bufnr, base_ns, buffer_line, 0, {
+            virt_lines = { { { line, 'DiffText' } } },
+          })
+          a.nvim_buf_set_extmark(left.bufnr, base_ns, buffer_line, 0, {
+            virt_lines = { { { '' } } },
+          })
+          a.nvim_buf_set_extmark(right.bufnr, base_ns, buffer_line, 0, {
+            virt_lines = { { { '' } } },
+          })
+        end
       end
     else
       a.nvim_buf_set_lines(middle.bufnr, start, -1, false, hunk.lines)
