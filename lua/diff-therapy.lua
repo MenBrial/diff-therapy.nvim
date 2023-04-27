@@ -37,7 +37,7 @@ M.start = function()
   local filename = vim.fn.bufname()
   local filetype = vim.bo.filetype
 
-  vim.cmd [[tabnew git-therapy://ours]]
+  vim.cmd('tabnew Ours – ' .. contents.ours_name)
   local left = {
     win = a.nvim_get_current_win(),
     bufnr = a.nvim_get_current_buf(),
@@ -51,7 +51,7 @@ M.start = function()
   }
   vim.cmd [[diffthis]]
 
-  vim.cmd [[belowright vnew git-therapy://theirs]]
+  vim.cmd('belowright vnew Theirs – ' .. contents.theirs_name)
   local right = {
     win = a.nvim_get_current_win(),
     bufnr = a.nvim_get_current_buf(),
@@ -75,7 +75,7 @@ M.start = function()
         local buffer_line = a.nvim_buf_line_count(middle.bufnr) - 1
 
         a.nvim_buf_set_extmark(middle.bufnr, base_ns, buffer_line, 0, {
-          virt_lines = { { { line } } },
+          virt_lines = { { { line, 'DiffText' } } },
         })
 
         a.nvim_buf_set_extmark(left.bufnr, base_ns, buffer_line, 0, {
@@ -105,6 +105,12 @@ M.start = function()
     vim.bo[conf.bufnr].bufhidden = "hide"
     vim.bo[conf.bufnr].swapfile = false
   end
+
+  -- Create keybindings
+  vim.keymap.set('n', 'dgo', left.bufnr .. 'do', {
+    desc = 'Get "ours" modification' })
+  vim.keymap.set('n', 'dgt', right.bufnr .. 'do', {
+    desc = 'Get "theirs" modification' })
 
   -- Fix redraw bugs
   vim.cmd [[mode]]
@@ -136,8 +142,11 @@ M.get_contents = function(lines)
   local mode = modes.ALL
 
   local contents = {
+    ours_name = '',
     ours = Contents:new(modes.OURS),
+    theirs_name = '',
     theirs = Contents:new(modes.THEIRS),
+    base_name = '',
     base = Contents:new(modes.BASE),
   }
 
@@ -146,14 +155,20 @@ M.get_contents = function(lines)
       -- Starting new diff
       hunk = hunk + 1
       mode = modes.OURS
+      local _, e = string.find(line, markers.ours)
+      contents.ours_name = string.sub(line, e+1)
     elseif string.find(line, markers.base) then
       mode = modes.BASE
+      local _, e = string.find(line, markers.base)
+      contents.base_name = string.sub(line, e+1)
     elseif string.find(line, markers.delimiter) then
       mode = modes.THEIRS
     elseif string.find(line, markers.theirs) then
       -- Ending the diff, so next line is good
       hunk = hunk + 1
       mode = modes.ALL
+      local _, e = string.find(line, markers.theirs)
+      contents.theirs_name = string.sub(line, e+1)
     else
       if mode == modes.ALL then
         contents.ours:insert(mode, hunk, line)
@@ -175,3 +190,5 @@ M.get_contents = function(lines)
 end
 
 return M
+
+-- vim:sw=2:
